@@ -1,0 +1,66 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: WP OTP Login\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2016-08-17 16:31+0700\n"
+"PO-Revision-Date: 2021-03-13 18:00+0200\n"
+"Language: he_IL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 2.4.2\n"
+"X-Poedit-KeywordsList: __;_e;_n:1,2;_x:1,2c;_ex:1,2c\n"
+"X-Poedit-Basepath: .\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Poedit-SearchPath-0: ..\n"
+
+msgid "Phone Number"
+msgstr "מספר טלפון"
+
+msgid "Email Address"
+msgstr "כתובת מייל"
+
+msgid "Email Address or mobile number"
+msgstr "כתובת מייל או מספר סלולרי"
+
+msgid "email account and mobile number"
+msgstr "תיבת המייל והטלפון שלך"
+
+msgid "Send my code"
+msgstr "שלח לי קוד כניסה"
+
+msgid "Enter OTP code"
+msgstr "הכנס את הקוד שקיבלת"
+
+msgid "Enter site"
+msgstr "כניסה לאתר"
+
+msgid "Back"
+msgstr "חזרה"
+
+msgid "Cannot find user"
+msgstr "המשתמש לא נמצא"
+
+msgid "Incorrect code"
+msgstr "קוד לא תקין"
+
+msgid "At this moment a one time code has been sent to your %s"
+msgstr "ברגעים אלו נשלח אליך קוד חד פעמי ל%s"
+
+msgid "email account"
+msgstr "תיבת המייל שלך"
+
+msgid "phone"
+msgstr "טלפון"
+
+msgid "Please wait %s seconds before resubmitting"
+msgstr "ניתן לבצע נסיון נוסף בעוד %s שניות"
+
+msgid "I received the code"
+msgstr "קיבלתי את הקוד"
+
+msgid "Could not find user by this identifier"
+msgstr "לא נמצא משתמש עם מזהה כזה"
+
+msgid "Please wait while you are being redirected"
+msgstr "אנא המתן בזמן שאנחנו מעבירים אותך לאתר"
