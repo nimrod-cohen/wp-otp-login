@@ -6,7 +6,7 @@
  * Plugin Name:       Wordpress OTP Login
  * Plugin URI:        http://wordpress.org/plugins/wp-OTP-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           0.8.1
+ * Version:           1.0.0
  * Author:            Nimrod Cohen
  * Author URI:        https://google.com?q=who+is+the+dude
  * License:           GPL-2.0+
@@ -18,8 +18,10 @@
 class WPOTPLogin {
   public static $PROVIDERS = [];
 
+  const OVERRIDE_LOGIN = "wpotp_login_override";
+
   function __construct() {
-    add_action('wp_ajax_nopriv_send_otp', [$this, 'send_otp']);
+    add_action('wp_ajax_nopriv_send_otp', [$this, 'check_login_method']);
     add_action('wp_ajax_nopriv_verify_otp_code', [$this, 'verify_otp_code']);
     add_action('init', [$this, 'redirect_login_page']);
     add_action('plugins_loaded', [$this, 'load_languages']);
@@ -28,8 +30,24 @@ class WPOTPLogin {
     //admin
     add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'add_settings_link']);
     add_action('admin_menu', [$this, 'add_settings_page']);
+//    add_action('admin_bar_menu', [$this, 'add_settings_to_admin_bar'], 100);
+
     add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
     add_action('wp_ajax_save_otp_settings', [$this, 'save_settings']);
+    add_filter('auth_cookie_expiration', [$this, 'set_cookie_expiration'], 10, 3);
+
+    add_action('admin_init', function () {
+      $updater = new GitHubPluginUpdater(__FILE__);
+    });
+
+    if (!session_id()) {
+      session_start();
+    }
+  }
+
+  public function set_cookie_expiration($expiration, $user_id, $remember) {
+    $expire = get_option('wpotp_session_expiration_days') ?? false;
+    return $expire ? intval($expire) * DAY_IN_SECONDS : $expiration;
   }
 
   public function add_settings_link($links) {
@@ -91,8 +109,12 @@ class WPOTPLogin {
       return;
     }
 
-    wp_redirect($custom_login_page);
+    //if the user is part of the exclusion list, allow login
+    if ($_SESSION[self::OVERRIDE_LOGIN] ?? false === true) {
+      return;
+    }
 
+    wp_redirect($custom_login_page);
     exit();
   }
 
@@ -100,8 +122,9 @@ class WPOTPLogin {
     wp_enqueue_style('wp-buttons-style', includes_url('css/buttons.min.css'));
     wp_enqueue_style('wp-login-style', admin_url('css/login.min.css'));
     wp_enqueue_style('wp-forms-style', admin_url('css/forms.min.css'));
-    wp_enqueue_script('wpotp-login-js', plugins_url('js/otp.js', __FILE__), ['wpjsutils']);
-    wp_enqueue_style('wpotp-login-style', plugins_url('css/otp.css', __FILE__));
+    $cachebust = "?time=" . date('Y_m_d_H');
+    wp_enqueue_script('wpotp-login-js', plugins_url('js/otp.js' . $cachebust, __FILE__), ['wpjsutils']);
+    wp_enqueue_style('wpotp-login-style', plugins_url('css/otp.css' . $cachebust, __FILE__));
 
     wp_localize_script('wpotp-login-js', 'otpInfo',
       [
@@ -138,7 +161,7 @@ class WPOTPLogin {
       if ($saved_otp == $otp_code) {
         wp_clear_auth_cookie(); // Clear any existing auth cookies
         wp_set_current_user($user_id);
-        wp_set_auth_cookie($user_id);
+        wp_set_auth_cookie($user_id, true);
 
         $redirect = apply_filters('wpotp/redirect-successful-login', site_url('/'), $user_id);
 
@@ -212,6 +235,32 @@ class WPOTPLogin {
     $result = $sender->sendCode($email, sprintf(get_option("wpotp_message"), $code), $code);
 
     return $result;
+  }
+
+  function check_login_method() {
+    $identifier = $_POST["identifier"] ?? null;
+
+    if (empty($identifier)) {
+      throw new Exception(__("Missing user identifier", "wp-otp-login"));
+    }
+
+    $excludeList = explode(',', get_option('wpotp_exclude_list') ?? '');
+
+    if (in_array($identifier, $excludeList)) {
+      //check if session started, and set session to allow login
+      $this->send_override($identifier);
+    } else {
+      $this->send_otp();
+    }
+  }
+
+  function send_override($identifier) {
+    $_SESSION[self::OVERRIDE_LOGIN] = true;
+    wp_send_json([
+      "error" => false,
+      "action" => "exclude_user",
+      "redirect" => wp_login_url() . '?login=1&email=' . urlencode($identifier)
+    ]);
   }
 
   function send_otp() {
@@ -295,6 +344,14 @@ class WPOTPLogin {
     wp_enqueue_script('wpotp-js', plugins_url('js/admin.js', __FILE__), ['wpjsutils']);
   }
 
+  // function add_settings_to_admin_bar($admin_bar) {
+  //   $admin_bar->add_menu([
+  //     'id' => 'wp-otp-login-settings',
+  //     'title' => '<span style="font-family: dashicons" class="dashicons dashicons-admin-network"></span> OTP',
+  //     'href' => admin_url('options-general.php?page=wp-otp-login-settings')
+  //   ]);
+  // }
+
   function add_settings_page() {
     add_options_page(
       'WP OTP Login Settings', // Page title
@@ -306,11 +363,11 @@ class WPOTPLogin {
   }
 
   function render_settings_page() {
-    include_once dirname(__FILE__) . "/admin/settings.php";
+    include_once __DIR__ . "/admin/settings.php";
   }
 
   function render_login_box() {
-    include_once dirname(__FILE__) . "/login/login.php";
+    include_once __DIR__ . "/login/login.php";
   }
 }
 
@@ -320,11 +377,17 @@ interface OTP_Provider {
   public function sendCode($identifier, $message, $code);
 }
 
-$providers_folder = dirname(__FILE__) . "/providers/";
+$providers_folder = __DIR__ . "/providers/";
 $files = glob($providers_folder . '*.php');
 
 foreach ($files as $file) {
-  include_once $file;
+  require_once $file;
+}
+
+$directory = __DIR__ . '/includes/';
+$files = glob($directory . '/*.php');
+foreach ($files as $file) {
+  require_once $file;
 }
 
 ?>

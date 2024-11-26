@@ -125,8 +125,10 @@ class OTPManager {
         action: 'send_otp',
         identifier: encodeURIComponent(this.state.get('identifier'))
       });
-
-      if (result.error) {
+      if (result.action === 'exclude_user') {
+        location.href = result.redirect;
+        return;
+      } else if (result.error) {
         errBox.classList.add('notice-error');
       } else {
         this.state.set('locktime', 60); //locking screen for 1min for sending SMS/email

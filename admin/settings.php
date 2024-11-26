@@ -36,6 +36,10 @@
         <th scope="row">Phone meta field<br/><span class="description" style="font-weight:100;">the phone has to be retreived from a user meta field</span></th>
         <td><input class="widefat input" type="text" name="wpotp_phone_meta_field" value="<?php echo esc_attr(get_option('wpotp_phone_meta_field')); ?>" /></td>
       </tr>
+      <tr valign="top">
+        <th scope="row">Expriation Days<br/><span class="description" style="font-weight:100;">number of days until session expires</span></th>
+        <td><input class="widefat input" type="text" name="wpotp_session_expiration_days" value="<?php echo esc_attr(get_option('wpotp_session_expiration_days')); ?>" /></td>
+      </tr>
     </table>
     <p class="submit"><input type="button" class="button button-primary save-settings" value="Save Changes"></p>
   </div>
