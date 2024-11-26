@@ -2,7 +2,7 @@
 /*
  * Plugin name: Misha Update Checker
  * Description: This simple plugin does nothing, only gets updates from a custom server
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: Misha Rudrastyh, changes by Nimrod Cohen
  * Author URI: https://rudrastyh.com
  * License: GPL
@@ -61,6 +61,9 @@ if (!class_exists('GitHubPluginUpdater')) {
       if ($this->cache_allowed) {
         delete_transient($this->latest_release_cache_key);
       }
+      delete_site_transient('update_plugins');
+      wp_update_plugins();
+
       wp_redirect(add_query_arg('cache_cleared_' . $this->plugin_slug, 'true', wp_get_referer()));
       exit;
     }
