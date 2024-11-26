@@ -6,7 +6,7 @@
  * Plugin Name:       Wordpress OTP Login
  * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.0.2
+ * Version:           1.0.3
  * Author:            nimrod-cohen
  * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
@@ -244,7 +244,19 @@ class WPOTPLogin {
       throw new Exception(__("Missing user identifier", "wp-otp-login"));
     }
 
-    $excludeList = explode(',', get_option('wpotp_exclude_list') ?? '');
+    $excludeList = array_reduce(
+      explode(',', get_option('wpotp_exclude_list') ?? ''),
+      function ($carry, $item) {
+        $item = strtolower(trim($item));
+        if (!empty($item)) {
+          $carry[] = $item;
+        }
+        return $carry;
+      },
+      []
+    );
+
+    $identifier = strtolower($identifier);
 
     if (in_array($identifier, $excludeList)) {
       //check if session started, and set session to allow login
