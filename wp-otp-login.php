@@ -4,11 +4,11 @@
  *
  * @wordpress-plugin
  * Plugin Name:       Wordpress OTP Login
- * Plugin URI:        http://wordpress.org/plugins/wp-OTP-login
+ * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.0.0
- * Author:            Nimrod Cohen
- * Author URI:        https://google.com?q=who+is+the+dude
+ * Version:           1.0.1
+ * Author:            nimrod-cohen
+ * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       wp-otp-login
