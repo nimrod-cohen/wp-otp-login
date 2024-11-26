@@ -6,7 +6,7 @@
  * Plugin Name:       Wordpress OTP Login
  * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.0.1
+ * Version:           1.0.2
  * Author:            nimrod-cohen
  * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
@@ -30,7 +30,7 @@ class WPOTPLogin {
     //admin
     add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'add_settings_link']);
     add_action('admin_menu', [$this, 'add_settings_page']);
-//    add_action('admin_bar_menu', [$this, 'add_settings_to_admin_bar'], 100);
+    add_action('admin_bar_menu', [$this, 'add_settings_to_admin_bar'], 100);
 
     add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
     add_action('wp_ajax_save_otp_settings', [$this, 'save_settings']);
@@ -344,13 +344,13 @@ class WPOTPLogin {
     wp_enqueue_script('wpotp-js', plugins_url('js/admin.js', __FILE__), ['wpjsutils']);
   }
 
-  // function add_settings_to_admin_bar($admin_bar) {
-  //   $admin_bar->add_menu([
-  //     'id' => 'wp-otp-login-settings',
-  //     'title' => '<span style="font-family: dashicons" class="dashicons dashicons-admin-network"></span> OTP',
-  //     'href' => admin_url('options-general.php?page=wp-otp-login-settings')
-  //   ]);
-  // }
+  function add_settings_to_admin_bar($admin_bar) {
+    $admin_bar->add_menu([
+      'id' => 'wp-otp-login-settings',
+      'title' => '<span style="font-family: dashicons" class="dashicons dashicons-admin-network"></span> OTP',
+      'href' => admin_url('options-general.php?page=wp-otp-login-settings')
+    ]);
+  }
 
   function add_settings_page() {
     add_options_page(
