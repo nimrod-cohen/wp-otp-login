@@ -6,7 +6,7 @@
  * Plugin Name:       Wordpress OTP Login
  * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.0.5
+ * Version:           1.0.6
  * Author:            nimrod-cohen
  * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
@@ -35,6 +35,7 @@ class WPOTPLogin {
     add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
     add_action('wp_ajax_save_otp_settings', [$this, 'save_settings']);
     add_filter('auth_cookie_expiration', [$this, 'set_cookie_expiration'], 10, 3);
+    add_action('wp_logout', [$this, 'clear_login_method']);
 
     add_action('admin_init', function () {
       $updater = new GitHubPluginUpdater(__FILE__);
@@ -235,6 +236,12 @@ class WPOTPLogin {
     $result = $sender->sendCode($email, sprintf(get_option("wpotp_message"), $code), $code);
 
     return $result;
+  }
+
+  function clear_login_method() {
+    if (isset($_SESSION[self::OVERRIDE_LOGIN])) {
+      unset($_SESSION[self::OVERRIDE_LOGIN]);
+    }
   }
 
   function check_login_method() {
