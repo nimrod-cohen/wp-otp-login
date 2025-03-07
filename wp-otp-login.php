@@ -6,7 +6,7 @@
  * Plugin Name:       Wordpress OTP Login
  * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.1.2
+ * Version:           1.1.3
  * Author:            nimrod-cohen
  * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
@@ -104,6 +104,10 @@ if (!class_exists('WPOTPLogin')) {
       $requested_url = site_url($_SERVER["REQUEST_URI"]);
       $requested_url = strtok($requested_url, '?');
       $custom_login_page = get_option('wpotp_custom_login_page');
+      //check if custom_login_page doesn't start with http[s]:// then add the site url
+      if (!preg_match('/^http[s]?:\/\//', $custom_login_page)) {
+        $custom_login_page = site_url($custom_login_page);
+      }
 
       //if we're on the custom login page already, just load the assets and return.
       if (strpos($requested_url, $custom_login_page) !== false) {

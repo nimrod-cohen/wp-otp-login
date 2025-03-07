@@ -25,8 +25,11 @@
         <td><input class="widefat input" type="checkbox" name="wpotp_otp_enabled" <?php echo get_option('wpotp_otp_enabled') == "true" ? "checked" : ""; ?> /></td>
       </tr>
       <tr valign="top">
-        <th scope="row">Custom login page</th>
-        <td><input class="widefat input" type="text" name="wpotp_custom_login_page" value="<?php echo esc_attr(get_option('wpotp_custom_login_page')); ?>" /></td>
+        <th scope="row">Custom login page<br/><span class="description" style="font-weight:100;">relative paths assume site url in the beggining</span></th>
+        <td>
+          <input class="widefat input" type="text" name="wpotp_custom_login_page" data-site-url="<?php echo site_url(); ?>" value="<?php echo esc_attr(get_option('wpotp_custom_login_page')); ?>" /><br/>
+          <span class="description" style="font-weight:100;margin-top:2px;" id='wpotp_custom_login_page_actual'></span>
+        </td>
       </tr>
       <tr valign="top">
         <th scope="row">OTP message<br/><span class="description" style="font-weight:100;">use %s where the code goes</span></th>

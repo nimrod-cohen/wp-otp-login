@@ -9,6 +9,23 @@ JSUtils.domReady(() => {
         e.target.classList.add('nav-tab-active');
       })
     );
+
+    document.querySelector("input[name='wpotp_custom_login_page']").addEventListener('input', e => {
+      let val = e.target.value;
+      const siteurl = e.target.dataset.siteUrl;
+      //if val doesn't start with http or https, add the site url
+      if (!val.match(/^(http|https):\/\//)) {
+        //check if site url ends with a slash, and val starts with a slash, then remove the slash from val
+        if (val.startsWith('/') && siteurl.endsWith('/')) {
+          val = siteurl + val.substring(1);
+        } else if (!val.startsWith('/') && !siteurl.endsWith('/')) {
+          val = `${siteurl}/${val}`;
+        } else {
+          val = siteurl + val;
+        }
+      }
+      document.querySelector('#wpotp_custom_login_page_actual').innerText = val;
+    });
   };
 
   const saveSettings = async e => {
