@@ -1,19 +1,17 @@
 <?php
 /*
- * Plugin name: Misha Update Checker
- * Description: This simple plugin does nothing, only gets updates from a custom server
+ * A plugin updater helper class for WordPress plugins hosted on GitHub.
  * Version: 1.4
- * Author: Misha Rudrastyh, changes by Nimrod Cohen, Oleg Shumar, Milen Petrov
- * Author URI: https://rudrastyh.com
+ * Author - Misha Rudrastyh, changes by Nimrod Cohen, Oleg Shumar, Milen Petrov
+ * Author URI - https://rudrastyh.com
  * License: GPL
  *
- * Make sure to set Author to your github user handle and Version in the plugin header
+ * Make sure to set plugin's Author to your github user handle and Version in the plugin header
  * use the .git/hooks/pre-commit and post-commit to automatically update the version number
  * in readme.md files if necessary (there's a pre-commit.sample file)
  * and create a tag with the version number
  */
 
-/**/
 namespace WPOTPLogin;
 
 defined('ABSPATH') || exit;
@@ -173,7 +171,7 @@ class GitHubPluginUpdater {
 
     if (
       version_compare($this->plugin_data["Version"], $this->latest_release["version"], '<')) {
-      $res = new stdClass();
+      $res = new \stdClass();
       $res->slug = $this->plugin_slug;
       $res->plugin = $this->plugin_file; // misha-update-plugin/misha-update-plugin.php
       $res->new_version = $this->latest_release["version"];
@@ -250,11 +248,11 @@ class GitHubPluginUpdater {
       return 'Error renaming the directory.';
     }
 
-    $zip = new ZipArchive();
+    $zip = new \ZipArchive();
     $new_zip_name = $this->get_tmp_name();
 
-    if ($zip->open($new_zip_name, ZipArchive::CREATE) === true) {
-      $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($new_name, RecursiveDirectoryIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
+    if ($zip->open($new_zip_name, \ZipArchive::CREATE) === true) {
+      $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($new_name, \RecursiveDirectoryIterator::SKIP_DOTS), \RecursiveIteratorIterator::CHILD_FIRST);
       foreach ($iterator as $filename => $fileobject) {
         $local_path = $this->plugin_slug . '/' . substr($filename, strlen($new_name) + 1);
         if (!$fileobject->isDir()) {
