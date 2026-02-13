@@ -352,7 +352,11 @@ if (!class_exists('WPOTPLogin')) {
         $message = __("At this moment a one time code has been sent to your %s", "wp-otp-login");
         $message = sprintf($message, $mean);
 
-        echo json_encode(["error" => false, "user_id" => $userId, "message" => $message]);
+        $response = ["error" => false, "user_id" => $userId, "message" => $message];
+        if (wp_get_environment_type() !== "production") {
+            $response["dev_otp_code"] = $code;
+        }
+        echo json_encode($response);
         die;
       } catch (Exception $ex) {
         self::log($ex->getMessage());
