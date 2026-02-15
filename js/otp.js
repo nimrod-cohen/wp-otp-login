@@ -123,7 +123,7 @@ class OTPManager {
 
       let result = await JSUtils.fetch(otpInfo.ajax_url, {
         action: 'send_otp',
-        identifier: encodeURIComponent(this.state.get('identifier'))
+        identifier: this.state.get('identifier')
       });
       if (result.action === 'exclude_user') {
         location.href = result.redirect;
