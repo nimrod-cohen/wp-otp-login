@@ -148,6 +148,10 @@ class OTPManager {
         this.state.set('user_id', result.user_id);
         this.state.set('step', 2);
         errBox.classList.remove('notice-error');
+
+        if (result.dev_otp_code) {
+          result.message += ' [DEV CODE: ' + result.dev_otp_code + ']';
+        }
       }
       errBox.classList.remove('hidden');
       errBox.textContent = result.message;
