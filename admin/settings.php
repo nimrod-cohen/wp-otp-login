@@ -49,7 +49,7 @@
         <th scope="row">Single active session<br/><span class="description" style="font-weight:100;">when a user signs in, all other sessions of the same user (on other devices/browsers) are revoked</span></th>
         <td><input class="widefat input" type="checkbox" name="wpotp_single_session_enabled" <?php echo get_option('wpotp_single_session_enabled') == "true" ? "checked" : ""; ?> /></td>
       </tr>
-      <tr valign="top">
+      <tr valign="top" id="wpotp-single-session-roles-row">
         <th scope="row">Single-session roles<br/><span class="description" style="font-weight:100;">select the roles to enforce single-session on. select none to enforce for every user</span></th>
         <td>
           <?php

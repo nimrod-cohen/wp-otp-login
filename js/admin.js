@@ -10,6 +10,16 @@ JSUtils.domReady(() => {
       })
     );
 
+    const singleSessionCheckbox = document.querySelector("input[name='wpotp_single_session_enabled']");
+    const singleSessionRolesRow = document.getElementById('wpotp-single-session-roles-row');
+    if (singleSessionCheckbox && singleSessionRolesRow) {
+      const toggleSingleSessionRoles = () => {
+        singleSessionRolesRow.style.display = singleSessionCheckbox.checked ? '' : 'none';
+      };
+      toggleSingleSessionRoles();
+      singleSessionCheckbox.addEventListener('change', toggleSingleSessionRoles);
+    }
+
     document.querySelector("input[name='wpotp_custom_login_page']").addEventListener('input', e => {
       let val = e.target.value;
       const siteurl = e.target.dataset.siteUrl;
