@@ -4,20 +4,22 @@
     <small><?php echo "version " . WPOTPLogin::version(); ?></small>
   </div>
   <p>set up wordpress one time password settings</p>
-  <span>Instructions:</span>
-  <ol>
-    <li>Create a custom login page, in your pages section and choose a url for it</li>
-    <li>Publish your page and make sure it is accessible to non logged in visitors</li>
-    <li>Add a shortcode component to the page: [otp-login-page] </li>
-    <li><strong>Finally</strong> Return to this page, check the "Enable OTP Login" checkbox in the General tab and set the login url</li>
-  </ol>
   <h2 class="nav-tab-wrapper">
+      <a href="#" data-tab-id="tab_instructions" class="nav-tab">Instructions</a>
       <a href="#" data-tab-id="tab_general" class="nav-tab nav-tab-active">General</a>
       <a href="#" data-tab-id="tab_exclusion" class="nav-tab">Exclusion List</a>
       <a href="#" data-tab-id="tab_019" class="nav-tab nav-tab">019</a>
       <a href="#" data-tab-id="tab_cio" class="nav-tab">CustomerIO</a>
       <!-- Add more tabs here if needed -->
   </h2>
+  <div id="tab_instructions" class="settings-tab" style="display: none;">
+    <ol>
+      <li>Create a custom login page, in your pages section and choose a url for it</li>
+      <li>Publish your page and make sure it is accessible to non logged in visitors</li>
+      <li>Add a shortcode component to the page: [otp-login-page] </li>
+      <li><strong>Finally</strong> Return to this page, check the "Enable OTP Login" checkbox in the General tab and set the login url</li>
+    </ol>
+  </div>
   <div id="tab_general" class="settings-tab">
     <table class="otp-settings form-table">
       <tr valign="top">
