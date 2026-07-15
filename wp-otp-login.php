@@ -6,7 +6,7 @@
  * Plugin Name:       Wordpress OTP Login
  * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.2.1
+ * Version:           1.3.0
  * Author:            nimrod-cohen
  * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
@@ -46,6 +46,10 @@ if (!class_exists('WPOTPLogin')) {
       add_action('wp_ajax_save_otp_settings', [$this, 'save_settings']);
       add_filter('auth_cookie_expiration', [$this, 'set_cookie_expiration'], 10, 3);
       add_action('wp_logout', [$this, 'clear_login_method']);
+      // Fires for every login path — OTP verify, wp-login.php, or a raw
+      // wp_set_auth_cookie() call — so single-session enforcement doesn't
+      // need to be duplicated per login method.
+      add_action('set_logged_in_cookie', [$this, 'enforce_single_session'], 10, 6);
 
       add_action('admin_init', function () {
         $updater = new \WPOTPLogin\GitHubPluginUpdater(__FILE__);
@@ -62,6 +66,19 @@ if (!class_exists('WPOTPLogin')) {
     public function set_cookie_expiration($expiration, $user_id, $remember) {
       $expire = get_option('wpotp_session_expiration_days') ?? false;
       return $expire ? intval($expire) * DAY_IN_SECONDS : $expiration;
+    }
+
+    /**
+     * When enabled, keep only the session token just issued and destroy
+     * every other session token belonging to this user. Effectively logs
+     * the user out of every other device the next time those sessions
+     * try to validate.
+     */
+    public function enforce_single_session($logged_in_cookie, $expire, $expiration, $user_id, $scheme, $token) {
+      if (get_option('wpotp_single_session_enabled') != 'true') return;
+      if (empty($user_id) || empty($token)) return;
+      $manager = \WP_Session_Tokens::get_instance($user_id);
+      $manager->destroy_others($token);
     }
 
     public function add_settings_link($links) {

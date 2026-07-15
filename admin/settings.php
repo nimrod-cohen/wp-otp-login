@@ -43,6 +43,10 @@
         <th scope="row">Expriation Days<br/><span class="description" style="font-weight:100;">number of days until session expires</span></th>
         <td><input class="widefat input" type="text" name="wpotp_session_expiration_days" value="<?php echo esc_attr(get_option('wpotp_session_expiration_days')); ?>" /></td>
       </tr>
+      <tr valign="top">
+        <th scope="row">Single active session<br/><span class="description" style="font-weight:100;">when a user signs in, all other sessions of the same user (on other devices/browsers) are revoked</span></th>
+        <td><input class="widefat input" type="checkbox" name="wpotp_single_session_enabled" <?php echo get_option('wpotp_single_session_enabled') == "true" ? "checked" : ""; ?> /></td>
+      </tr>
     </table>
     <p class="submit"><input type="button" class="button button-primary save-settings" value="Save Changes"></p>
   </div>
