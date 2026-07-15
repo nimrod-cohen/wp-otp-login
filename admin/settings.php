@@ -48,8 +48,20 @@
         <td><input class="widefat input" type="checkbox" name="wpotp_single_session_enabled" <?php echo get_option('wpotp_single_session_enabled') == "true" ? "checked" : ""; ?> /></td>
       </tr>
       <tr valign="top">
-        <th scope="row">Single-session roles<br/><span class="description" style="font-weight:100;">comma-separated role slugs (e.g. administrator,editor,student). leave empty to enforce for every user</span></th>
-        <td><input class="widefat input" type="text" name="wpotp_single_session_roles" value="<?php echo esc_attr(get_option('wpotp_single_session_roles')); ?>" /></td>
+        <th scope="row">Single-session roles<br/><span class="description" style="font-weight:100;">select the roles to enforce single-session on. select none to enforce for every user</span></th>
+        <td>
+          <?php
+            $selectedRoles = array_filter(array_map('trim', explode(',', (string) get_option('wpotp_single_session_roles', ''))));
+            $allRoles = wp_roles()->get_names();
+          ?>
+          <select class="widefat input" name="wpotp_single_session_roles" multiple size="<?php echo max(4, min(10, count($allRoles))); ?>">
+            <?php foreach ($allRoles as $slug => $label): ?>
+              <option value="<?php echo esc_attr($slug); ?>" <?php echo in_array($slug, $selectedRoles, true) ? 'selected' : ''; ?>>
+                <?php echo esc_html($label . ' (' . $slug . ')'); ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </td>
       </tr>
     </table>
     <p class="submit"><input type="button" class="button button-primary save-settings" value="Save Changes"></p>

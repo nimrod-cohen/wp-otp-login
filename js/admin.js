@@ -41,6 +41,15 @@ JSUtils.domReady(() => {
           if (inp.type === 'checkbox') data[inp.getAttribute('name')] = inp.checked;
           else data[inp.getAttribute('name')] = inp.value;
           break;
+        case 'SELECT':
+          // Multi-select serialization — join with commas so the storage
+          // format matches what the server-side reader already parses.
+          if (inp.multiple) {
+            data[inp.getAttribute('name')] = Array.from(inp.selectedOptions).map(o => o.value).join(',');
+          } else {
+            data[inp.getAttribute('name')] = inp.value;
+          }
+          break;
       }
     });
 
