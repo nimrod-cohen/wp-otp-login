@@ -6,7 +6,7 @@
  * Plugin Name:       Wordpress OTP Login
  * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.3.0
+ * Version:           1.4.0
  * Author:            nimrod-cohen
  * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
@@ -77,6 +77,19 @@ if (!class_exists('WPOTPLogin')) {
     public function enforce_single_session($logged_in_cookie, $expire, $expiration, $user_id, $scheme, $token) {
       if (get_option('wpotp_single_session_enabled') != 'true') return;
       if (empty($user_id) || empty($token)) return;
+
+      // Optional role filter — when set, single-session is only enforced
+      // for users whose role list intersects the configured slugs. Empty
+      // list keeps the original behavior of enforcing for every user.
+      $rolesOption = trim((string) get_option('wpotp_single_session_roles', ''));
+      if ($rolesOption !== '') {
+        $allowedRoles = array_filter(array_map('trim', explode(',', $rolesOption)));
+        $user = get_userdata($user_id);
+        if (!$user || empty(array_intersect($allowedRoles, (array) $user->roles))) {
+          return;
+        }
+      }
+
       $manager = \WP_Session_Tokens::get_instance($user_id);
       $manager->destroy_others($token);
     }
