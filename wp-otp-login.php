@@ -6,7 +6,7 @@
  * Plugin Name:       WordPress OTP Login
  * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.4.2
+ * Version:           1.5.0
  * Author:            nimrod-cohen
  * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
@@ -314,12 +314,38 @@ if (!class_exists('WPOTPLogin')) {
 
       $identifier = strtolower($identifier);
 
-      if (in_array($identifier, $excludeList)) {
+      if (in_array($identifier, $excludeList) || $this->identifier_has_excluded_role($identifier)) {
         //check if session started, and set session to allow login
         $this->send_override($identifier);
       } else {
         $this->send_otp();
       }
+    }
+
+    /**
+     * Resolve the identifier (email or phone) to a WP user and check
+     * whether any of the user's roles is in the exclude-roles list.
+     * Returns false when the option is empty, the identifier can't be
+     * resolved, or the user has none of the excluded roles.
+     */
+    private function identifier_has_excluded_role($identifier) {
+      $rolesOption = trim((string) get_option('wpotp_exclude_roles', ''));
+      if ($rolesOption === '') return false;
+      $excludedRoles = array_filter(array_map('trim', explode(',', $rolesOption)));
+      if (empty($excludedRoles)) return false;
+
+      $userId = null;
+      if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+        $userId = $this->find_user_by_email($identifier);
+      } else {
+        $phone = apply_filters('wpotp/cleanup-phone', $identifier);
+        $userId = $this->find_user_by_phone($phone);
+      }
+      if (!$userId) return false;
+
+      $user = get_userdata($userId);
+      if (!$user) return false;
+      return !empty(array_intersect($excludedRoles, (array) $user->roles));
     }
 
     function send_override($identifier) {

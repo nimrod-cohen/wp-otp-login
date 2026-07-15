@@ -111,9 +111,25 @@
   <div id="tab_exclusion" class="settings-tab" style="display: none;">
     <table class="otp-settings form-table">
       <tr valign="top">
-        <th scope="row">Exclude these users from logining in with OTP</th>
+        <th scope="row">Exclude these users from logining in with OTP<br/><span class="description" style="font-weight:100;">comma-separated emails / phones</span></th>
         <td>
-          <textarea rows="10" class="widefat input" type="checkbox" name="wpotp_exclude_list"><?php echo esc_attr(get_option('wpotp_exclude_list')); ?></textarea>
+          <textarea rows="10" class="widefat input" name="wpotp_exclude_list"><?php echo esc_attr(get_option('wpotp_exclude_list')); ?></textarea>
+        </td>
+      </tr>
+      <tr valign="top">
+        <th scope="row">Exclude roles from OTP<br/><span class="description" style="font-weight:100;">users whose role matches any of the below skip OTP and get the standard wp-login flow</span></th>
+        <td>
+          <?php
+            $excludeRoles = array_filter(array_map('trim', explode(',', (string) get_option('wpotp_exclude_roles', ''))));
+            $allRoles = wp_roles()->get_names();
+          ?>
+          <select class="widefat input" name="wpotp_exclude_roles" multiple size="<?php echo max(4, min(10, count($allRoles))); ?>">
+            <?php foreach ($allRoles as $slug => $label): ?>
+              <option value="<?php echo esc_attr($slug); ?>" <?php echo in_array($slug, $excludeRoles, true) ? 'selected' : ''; ?>>
+                <?php echo esc_html($label . ' (' . $slug . ')'); ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
         </td>
       </tr>
     </table>
