@@ -64,3 +64,14 @@ msgstr "לא נמצא משתמש עם מזהה כזה"
 
 msgid "Please wait while you are being redirected"
 msgstr "אנא המתן בזמן שאנחנו מעבירים אותך לאתר"
+msgid "A code was just sent. Please wait %d seconds before asking for another."
+msgstr "הקוד נשלח זה עתה. יש להמתין %d שניות לפני בקשת קוד חדש."
+
+msgid "Too many codes have been requested for this account. Please try again later."
+msgstr "נשלחו יותר מדי קודים לחשבון הזה. אנא נסו שוב מאוחר יותר."
+
+msgid "Too many login attempts from this connection. Please try again later."
+msgstr "יותר מדי ניסיונות כניסה מהחיבור הזה. אנא נסו שוב מאוחר יותר."
+
+msgid "Too many incorrect attempts. Please request a new code."
+msgstr "יותר מדי ניסיונות שגויים. יש לבקש קוד חדש."
