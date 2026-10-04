@@ -6,7 +6,7 @@
  * Plugin Name:       WordPress OTP Login
  * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.5.2
+ * Version:           1.6.0
  * Author:            nimrod-cohen
  * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
@@ -109,6 +109,94 @@ if (!class_exists('WPOTPLogin')) {
       return $plugin_data['Version'];
     }
 
+    /**
+     * Abuse limits. All filterable, so a site can retune them without a release.
+     *
+     *   resend gap      the wait before another code can be SENT. Typing the
+     *                   code is not limited by this — only asking for a new one.
+     *   per identifier  how many codes one account may be sent in a window,
+     *                   which is what stops someone being spammed by email+SMS.
+     *   per IP          the same ceiling for one source, across accounts, so a
+     *                   script cannot walk a user list.
+     *   verify attempts tries allowed against a single code before it is burned.
+     *                   Six digits is a million combinations; without this they
+     *                   can all be tried inside the code's ten-minute life.
+     */
+    private static function limits() {
+      return [
+        'resend_seconds' => (int) apply_filters('wpotp/limit-resend-seconds', 30),
+        'per_identifier' => (int) apply_filters('wpotp/limit-per-identifier', 5),
+        'per_ip' => (int) apply_filters('wpotp/limit-per-ip', 20),
+        'window_seconds' => (int) apply_filters('wpotp/limit-window-seconds', 900),
+        'verify_attempts' => (int) apply_filters('wpotp/limit-verify-attempts', 5),
+      ];
+    }
+
+    public static function client_ip() {
+      // No proxy in front of this site, so REMOTE_ADDR is the real client.
+      // A forwarded header is accepted only when a site opts in, because
+      // otherwise anyone can spoof it and walk straight past the per-IP limit.
+      if (apply_filters('wpotp/trust-forwarded-for', false) && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $parts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        return trim($parts[0]);
+      }
+      return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    }
+
+    /**
+     * A sliding window of recent sends, kept in a transient per key.
+     * Returns the number of sends already made inside the window.
+     */
+    private static function recent_sends($key) {
+      $hits = get_transient('wpotp_rate_' . md5($key));
+      $hits = is_array($hits) ? $hits : [];
+      $cutoff = time() - self::limits()['window_seconds'];
+      return array_values(array_filter($hits, function ($ts) use ($cutoff) {
+        return $ts >= $cutoff;
+      }));
+    }
+
+    private static function record_send($key) {
+      $hits = self::recent_sends($key);
+      $hits[] = time();
+      set_transient('wpotp_rate_' . md5($key), $hits, self::limits()['window_seconds']);
+    }
+
+    /**
+     * May a code be sent for this identifier, from this IP, right now?
+     * Returns null when allowed, or a message for the caller when not.
+     */
+    private static function send_blocked_reason($identifier) {
+      $limits = self::limits();
+      $ip = self::client_ip();
+
+      $forIdentifier = self::recent_sends('id:' . strtolower($identifier));
+      $forIp = self::recent_sends('ip:' . $ip);
+
+      $last = $forIdentifier ? max($forIdentifier) : 0;
+      $since = time() - $last;
+      if ($last && $since < $limits['resend_seconds']) {
+        $wait = $limits['resend_seconds'] - $since;
+        self::log("THROTTLED (resend gap) identifier=$identifier ip=$ip wait={$wait}s");
+        return sprintf(
+          /* translators: %d: seconds to wait */
+          __('A code was just sent. Please wait %d seconds before asking for another.', 'wp-otp-login'),
+          $wait);
+      }
+
+      if (count($forIdentifier) >= $limits['per_identifier']) {
+        self::log("THROTTLED (identifier quota) identifier=$identifier ip=$ip sends=" . count($forIdentifier));
+        return __('Too many codes have been requested for this account. Please try again later.', 'wp-otp-login');
+      }
+
+      if (count($forIp) >= $limits['per_ip']) {
+        self::log("THROTTLED (ip quota) identifier=$identifier ip=$ip sends=" . count($forIp));
+        return __('Too many login attempts from this connection. Please try again later.', 'wp-otp-login');
+      }
+
+      return null;
+    }
+
     public static function log($msg) {
       if (is_array($msg) || is_object($msg)) {
         $msg = print_r($msg, true);
@@ -201,21 +289,44 @@ if (!class_exists('WPOTPLogin')) {
           wp_send_json(["error" => true, "message" => __("Incorrect code", "wp-otp-login")]); //this dies
         }
 
-        $saved_otp = $saved_otp["code"];
+        // Six digits is a million possibilities, and the code lives for ten
+        // minutes — long enough to try all of them. Each wrong guess is counted
+        // and the code is burned on the fifth, so guessing is not a strategy.
+        $limits = self::limits();
+        $attempts = (int) ($saved_otp["attempts"] ?? 0);
+        if ($attempts >= $limits['verify_attempts']) {
+          delete_user_meta($user_id, 'otp_code');
+          self::log("VERIFY BLOCKED - user $user_id exhausted {$limits['verify_attempts']} attempts, code invalidated, ip=" . self::client_ip());
+          wp_send_json(["error" => true, "message" => __("Too many incorrect attempts. Please request a new code.", "wp-otp-login")]); //this dies
+        }
 
-        if (empty($saved_otp) || empty($otp_code)) {
+        $saved_code = $saved_otp["code"];
+
+        if (empty($saved_code) || empty($otp_code)) {
           wp_send_json(["error" => true, "message" => __("Incorrect code", "wp-otp-login")]); //this dies
         }
 
-        if ($saved_otp == $otp_code) {
+        // hash_equals, so a wrong guess cannot be refined by timing the reply
+        if (hash_equals((string) $saved_code, (string) $otp_code)) {
+          // Spend the code. It was previously left in place for the rest of its
+          // ten minutes, so the same code could be used again — by anyone who
+          // had seen it.
+          delete_user_meta($user_id, 'otp_code');
+
           wp_clear_auth_cookie(); // Clear any existing auth cookies
           wp_set_current_user($user_id);
           wp_set_auth_cookie($user_id, true);
+
+          self::log("LOGIN OK - user $user_id ip=" . self::client_ip());
 
           $redirect = apply_filters('wpotp/redirect-successful-login', site_url('/'), $user_id);
 
           wp_send_json(["error" => false, "redirect" => $redirect, "message" => __("Please wait while you are being redirected", "wp-otp-login")]); //this dies
         } else {
+          $saved_otp["attempts"] = $attempts + 1;
+          update_user_meta($user_id, 'otp_code', json_encode($saved_otp));
+          self::log("VERIFY FAILED - user $user_id attempt " . $saved_otp["attempts"] . "/" . $limits['verify_attempts'] . " ip=" . self::client_ip());
+
           wp_send_json(["error" => true, "message" => __("Incorrect code", "wp-otp-login")]); //this dies
         }
       } catch (Exception $ex) {
@@ -366,7 +477,16 @@ if (!class_exists('WPOTPLogin')) {
         $userId = null;
         $identifier = isset($_POST["identifier"]) ? $_POST["identifier"] : null;
 
-        self::log("REQUEST ARRIVED - OTP for identifier: $identifier ==>");
+        // The IP and agent are the whole point of this line: without them a
+        // burst of codes arriving at a user cannot be told from the user's own
+        // retries, which is exactly the question asked when it happens.
+        $ip = self::client_ip();
+        $agent = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? '-'), 0, 160);
+        self::log("REQUEST ARRIVED - OTP for identifier: $identifier ==> ip=$ip agent=$agent");
+
+        if ($blocked = self::send_blocked_reason($identifier)) {
+          wp_send_json(["error" => true, "message" => $blocked]); //this dies
+        }
 
         if ($emailEnabled && !empty($identifier) && filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
           $userId = $this->find_user_by_email($identifier);
@@ -383,9 +503,16 @@ if (!class_exists('WPOTPLogin')) {
           throw new Exception(__("Could not find user by this identifier", "wp-otp-login"));
         }
 
-        $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        update_user_meta($userId, 'otp_code', json_encode(["code" => $code, "ts" => time()]));
-        self::log("OTP for user $userId is $code");
+        // random_int, not mt_rand: this is a credential, and mt_rand's output
+        // is predictable from earlier values.
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        update_user_meta($userId, 'otp_code', json_encode(["code" => $code, "ts" => time(), "attempts" => 0]));
+
+        // The code itself is never logged. It used to be, which made the log
+        // file a list of live credentials for anyone who could read it.
+        self::log("OTP generated for user $userId (code not logged) ip=$ip");
+        self::record_send('id:' . strtolower($identifier));
+        self::record_send('ip:' . $ip);
 
         $user = new WP_User($userId);
         $phoneMetaField = get_option('wpotp_phone_meta_field');
