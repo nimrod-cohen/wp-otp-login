@@ -6,7 +6,7 @@
  * Plugin Name:       WordPress OTP Login
  * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.6.1
+ * Version:           1.7.0
  * Author:            nimrod-cohen
  * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
@@ -338,18 +338,54 @@ if (!class_exists('WPOTPLogin')) {
       }
     }
 
+    /**
+     * Resolve a phone number to a user id.
+     *
+     * Nothing stops two accounts from carrying the same phone - a typo in the
+     * email at registration is enough - and this query used to have no
+     * ORDER BY and no LIMIT, so get_row returned whichever row the database
+     * happened to hand back first. Login was a coin toss: paying students got
+     * sent to their empty duplicate and saw no courses.
+     *
+     * So the order is explicit, and the account that looks like the real one
+     * wins: most enrolments first, then most payments (a buyer can pay before
+     * the enrolment lands), then the oldest id as a stable tiebreak. The
+     * ordering is total, so the same phone always resolves to the same user.
+     *
+     * The enrolment and payment tables belong to the host site rather than to
+     * this plugin, so a site without them ranks on id alone instead of failing
+     * the query - a broken lookup here would lock everyone out.
+     */
     function find_user_by_phone($phone) {
       $phoneMetaField = get_option('wpotp_phone_meta_field');
       global $wpdb;
 
-      $sql = $wpdb->prepare("SELECT wp_users.ID
-    FROM wp_users
-    INNER JOIN wp_usermeta ON wp_users.ID = wp_usermeta.user_id
-    WHERE wp_usermeta.meta_key = %s
-    AND wp_usermeta.meta_value = %s", [$phoneMetaField, $phone]);
+      $enrolments = $wpdb->prefix . 'flms_class_to_students';
+      $payments   = $wpdb->prefix . 'payments';
 
-//    INNER JOIN wp_usermeta AS mt1 ON wp_users.ID = mt1.user_id and mt1.meta_key = 'wp_capabilities'
-//    $sql .= " AND mt1.meta_value LIKE '%student%'";
+      $rank = [];
+      $joins = '';
+      if ($this->table_exists($enrolments)) {
+        $joins .= " LEFT JOIN {$enrolments} cts ON cts.student_id = u.ID";
+        $rank[] = 'COUNT(DISTINCT cts.class_id) DESC';
+      }
+      if ($this->table_exists($payments)) {
+        $joins .= " LEFT JOIN {$payments} pay ON pay.student_id = u.ID AND pay.deleted = 0";
+        $rank[] = 'COUNT(DISTINCT pay.id) DESC';
+      }
+      $rank[] = 'u.ID ASC';
+
+      $sql = $wpdb->prepare(
+        "SELECT u.ID
+         FROM {$wpdb->users} u
+         INNER JOIN {$wpdb->usermeta} m ON u.ID = m.user_id
+         {$joins}
+         WHERE m.meta_key = %s AND m.meta_value = %s
+         GROUP BY u.ID
+         ORDER BY " . implode(', ', $rank) . "
+         LIMIT 1",
+        [$phoneMetaField, $phone]
+      );
 
       $row = $wpdb->get_row($sql, ARRAY_A);
 
@@ -359,6 +395,19 @@ if (!class_exists('WPOTPLogin')) {
       }
 
       return null;
+    }
+
+    /** True when $table exists, so an absent host-site table degrades the
+     *  ranking above instead of erroring the whole lookup. */
+    private function table_exists($table) {
+      global $wpdb;
+      static $cache = [];
+      if (!isset($cache[$table])) {
+        $cache[$table] = (bool) $wpdb->get_var(
+          $wpdb->prepare('SHOW TABLES LIKE %s', $table)
+        );
+      }
+      return $cache[$table];
     }
 
     function find_user_by_email($email) {
