@@ -6,7 +6,7 @@
  * Plugin Name:       WordPress OTP Login
  * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.7.0
+ * Version:           1.7.1
  * Author:            nimrod-cohen
  * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
@@ -205,7 +205,9 @@ if (!class_exists('WPOTPLogin')) {
       $date = date("Y-m-d");
       $datetime = date("Y-m-d H:i:s");
       file_put_contents(
-        ABSPATH . DIRECTORY_SEPARATOR . "logs" . DIRECTORY_SEPARATOR . "debug-otp-$date.log",
+        // SITE_LOGS_DIR (wp-config.php) keeps logs out of the web root; without it,
+        // or when it cannot be written, they stay in the site's own logs folder.
+        (defined('SITE_LOGS_DIR') && is_writable(SITE_LOGS_DIR) ? SITE_LOGS_DIR : ABSPATH . DIRECTORY_SEPARATOR . "logs") . DIRECTORY_SEPARATOR . "debug-otp-$date.log",
         "$datetime | $msg\r\n",
         FILE_APPEND);
     }
