@@ -6,7 +6,7 @@
  * Plugin Name:       WordPress OTP Login
  * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.7.1
+ * Version:           1.7.2
  * Author:            nimrod-cohen
  * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
@@ -244,6 +244,14 @@ if (!class_exists('WPOTPLogin')) {
 
       //are we trying to access the wp-login.php page?
       if (!$this->is_plugin_active() || $pagenow != "wp-login.php" || is_user_logged_in()) {
+        return;
+      }
+
+      // A password-reset link is opened from the mail client, often in another
+      // browser or device, where the session flag below was never set. Without
+      // this it bounced to the OTP page and the password could never be set.
+      // The reset key in the link is the credential; core validates it.
+      if (in_array($_REQUEST['action'] ?? '', ['rp', 'resetpass'], true)) {
         return;
       }
 
