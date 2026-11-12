@@ -6,7 +6,7 @@
  * Plugin Name:       WordPress OTP Login
  * Plugin URI: https://github.com/nimrod-cohen/wp-otp-login
  * Description:       Allow to log in to wordpress via one time password
- * Version:           1.7.2
+ * Version:           1.8.0
  * Author:            nimrod-cohen
  * Author URI:        https://github.com/nimrod-cohen/wp-otp-login
  * License:           GPL-2.0+
@@ -46,6 +46,8 @@ if (!class_exists('WPOTPLogin')) {
       add_action('wp_ajax_save_otp_settings', [$this, 'save_settings']);
       add_filter('auth_cookie_expiration', [$this, 'set_cookie_expiration'], 10, 3);
       add_action('wp_logout', [$this, 'clear_login_method']);
+      // After any email-template plugin (priority 10) has had its say.
+      add_filter('retrieve_password_message', [$this, 'reset_password_message'], 20, 4);
       // Fires for every login path — OTP verify, wp-login.php, or a raw
       // wp_set_auth_cookie() call — so single-session enforcement doesn't
       // need to be duplicated per login method.
@@ -499,12 +501,6 @@ if (!class_exists('WPOTPLogin')) {
      * resolved, or the user has none of the excluded roles.
      */
     private function identifier_has_excluded_role($identifier) {
-      $rolesOption = trim((string) get_option('wpotp_exclude_roles', ''));
-      if ($rolesOption === '') return false;
-      $excludedRoles = array_filter(array_map('trim', explode(',', $rolesOption)));
-      if (empty($excludedRoles)) return false;
-
-      $userId = null;
       if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
         $userId = $this->find_user_by_email($identifier);
       } else {
@@ -514,8 +510,73 @@ if (!class_exists('WPOTPLogin')) {
       if (!$userId) return false;
 
       $user = get_userdata($userId);
-      if (!$user) return false;
+      return $user ? $this->user_has_excluded_role($user) : false;
+    }
+
+    private function user_has_excluded_role($user) {
+      $rolesOption = trim((string) get_option('wpotp_exclude_roles', ''));
+      if ($rolesOption === '') return false;
+      $excludedRoles = array_filter(array_map('trim', explode(',', $rolesOption)));
       return !empty(array_intersect($excludedRoles, (array) $user->roles));
+    }
+
+    /** True when this user logs in with a password rather than a code:
+     *  an excluded role, or an email on the exclude list. */
+    private function user_uses_password($user) {
+      $excludeList = array_filter(array_map(
+        function ($item) { return strtolower(trim($item)); },
+        explode(',', (string) get_option('wpotp_exclude_list', ''))
+      ));
+      return in_array(strtolower($user->user_email), $excludeList, true)
+        || $this->user_has_excluded_role($user);
+    }
+
+    private function login_page_url() {
+      $page = (string) get_option('wpotp_custom_login_page');
+      return preg_match('/^https?:\/\//', $page) ? $page : site_url($page);
+    }
+
+    /**
+     * The password-reset email.
+     *
+     * Sites using OTP tend to replace this email with "there are no passwords
+     * here, log in with a code" - true for students, and a dead end for the
+     * roles excluded from OTP, who do have a password and were left with no
+     * way to set one. Those users get the reset link back; everyone else
+     * keeps the site's text, with [login_url] filled in with the OTP page.
+     */
+    function reset_password_message($message, $key, $user_login, $user_data) {
+      if (!$this->is_plugin_active() || !($user_data instanceof WP_User)) {
+        return $message;
+      }
+
+      $html = apply_filters('wp_mail_content_type', 'text/plain') === 'text/html';
+
+      if (!$this->user_uses_password($user_data)) {
+        $url = $this->login_page_url();
+        $link = $html ? '<a href="' . esc_url($url) . '">' . esc_html($url) . '</a>' : $url;
+        return str_replace('[login_url]', $link, $message);
+      }
+
+      $url = network_site_url('wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode($user_login), 'login');
+      $lines = [
+        __("A password reset was requested for your account.", "wp-otp-login"),
+        __("To choose a new password, open this link:", "wp-otp-login"),
+        $html ? '<a href="' . esc_url($url) . '">' . esc_html($url) . '</a>' : $url,
+        __("If you did not request this, you can ignore this email.", "wp-otp-login"),
+      ];
+
+      if (!$html) {
+        return implode("\r\n\r\n", $lines) . "\r\n";
+      }
+      // is_rtl() depends on the core language pack being loaded, which it is
+      // not everywhere (WP-CLI, for one), so the locale is checked as well.
+      $rtl = is_rtl() || in_array(substr(get_locale(), 0, 2), ['he', 'ar', 'fa', 'ur'], true);
+      $dir = $rtl ? 'rtl' : 'ltr';
+      $align = $rtl ? 'right' : 'left';
+      return implode('', array_map(function ($line) use ($dir, $align) {
+        return '<p dir="' . $dir . '" style="direction: ' . $dir . '; text-align: ' . $align . ';">' . $line . '</p>';
+      }, $lines));
     }
 
     function send_override($identifier) {

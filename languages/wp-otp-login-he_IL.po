@@ -75,3 +75,12 @@ msgstr "יותר מדי ניסיונות כניסה מהחיבור הזה. אנ�
 
 msgid "Too many incorrect attempts. Please request a new code."
 msgstr "יותר מדי ניסיונות שגויים. יש לבקש קוד חדש."
+
+msgid "A password reset was requested for your account."
+msgstr "התקבלה בקשה לאיפוס הסיסמה של החשבון שלך."
+
+msgid "To choose a new password, open this link:"
+msgstr "כדי לבחור סיסמה חדשה יש ללחוץ על הקישור:"
+
+msgid "If you did not request this, you can ignore this email."
+msgstr "אם לא ביקשת זאת, אפשר להתעלם מהמייל הזה."
